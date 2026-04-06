@@ -40,6 +40,13 @@ class V2 {
   norm() {
     return this.scale(1 / this.length());
   }
+
+  rotate(angle) {
+    return new V2(
+      this.x * Math.cos(angle) - this.y * Math.sin(angle),
+      this.x * Math.sin(angle) + this.y * Math.cos(angle)
+    )
+  }
 }
 
 class Ball {
@@ -49,15 +56,32 @@ class Ball {
   }
 }
 
+function draw_line(ctx, start_pos, end_pos, color, lineWidth = 1) {
+  ctx.beginPath();
+  ctx.moveTo(start_pos.x, start_pos.y);
+  ctx.lineTo(end_pos.x, end_pos.y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+}
+
 function draw_circle(ctx, pos, radius, color) {
-  ctx.save();
   ctx.beginPath();
   ctx.arc(pos.x, pos.y, radius, 0, 2 * Math.PI, false);
   ctx.fillStyle = color;
   ctx.fill();
   ctx.strokeStyle = color;
   ctx.stroke();
-  ctx.restore();
+}
+
+function draw_arrow(ctx, tip_pos, barb_l_pos, barb_r_pos, color) {
+  ctx.beginPath();
+  ctx.moveTo(tip_pos.x, tip_pos.y);
+  ctx.lineTo(barb_l_pos.x, barb_l_pos.y);
+  ctx.lineTo(barb_r_pos.x, barb_r_pos.y);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
 }
 
 const RADIUS = 20;
@@ -73,10 +97,26 @@ let v = new V2(40, 0);
 let pos = new V2(0, 100);
 let c_r = 0.5; // Coefficient of restitution
 let c_f = 0.5; // Coefficient of friction
-const balls = [new Ball(new V2(0, 100), new V2(40, 0))];
+// const balls = [new Ball(new V2(0, 100), new V2(40, 0))];
+const balls = [];
+
+let is_selecting_position = false;
+let mouse_pos = null;
+let drag_pos = null;
+let barb_l_pos = null;
+let barb_r_pos = null;
 
 function frame(cur_time) {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+  if (is_selecting_position) {
+    draw_circle(ctx, mouse_pos, 10, "yellow");
+
+    if (drag_pos) {
+      draw_line(ctx, mouse_pos, drag_pos, "yellow");
+      draw_arrow(ctx, drag_pos, barb_l_pos, barb_r_pos, "yellow");
+    }
+  }
 
   for (const ball of balls) {
     let new_v   = ball.v.add(a.scale(timestep));
@@ -108,12 +148,59 @@ function frame(cur_time) {
   this_frame = requestAnimationFrame(frame);
 }
 
+function rad(degree) {
+  return degree * (Math.PI / 180);
+}
+
 function main() {
   this_frame = requestAnimationFrame(frame);
 
   canvas.addEventListener("mousedown", (e) => {
-    const ball = new Ball(new V2(e.offsetX, e.offsetY), new V2(50, 0));
+    is_selecting_position = true;
+    mouse_pos = new V2(e.offsetX, e.offsetY);
+  })
+
+  canvas.addEventListener("mousemove", (e) => {
+    if (is_selecting_position) {
+      drag_pos = new V2(e.offsetX, e.offsetY);
+      const DEGREE = 30;
+      const LENGTH = 20;
+      barb_l_pos = mouse_pos.sub(drag_pos).norm().rotate(rad( DEGREE)).scale(LENGTH).add(drag_pos);
+      barb_r_pos = mouse_pos.sub(drag_pos).norm().rotate(rad(-DEGREE)).scale(LENGTH).add(drag_pos);
+    }
+  })
+
+  canvas.addEventListener("mouseup", (e) => {
+    is_selecting_position = false;
+
+    const drag_vec = drag_pos.sub(mouse_pos);
+    const x_axis = new V2(WIDTH, 0);
+    const sign_x = Math.sign(drag_vec.dot(x_axis));
+
+    const y_axis = new V2(0, HEIGHT);
+    const sign_y = Math.sign(drag_vec.dot(y_axis));
+
+    let angle;
+
+    let x_vec_from_mouse = sign_x < 0 ? new V2(0 - mouse_pos.x, 0) : new V2(WIDTH - mouse_pos.x, 0);
+
+    const cos = x_vec_from_mouse.dot(drag_vec) / (x_vec_from_mouse.length() * drag_vec.length());
+    angle = Math.acos(cos);
+
+    const X_SPEED = 200;
+    const Y_SPEED = 200;
+
+    const speed = new V2(
+      sign_x * X_SPEED * Math.cos(angle),
+      sign_y * Y_SPEED * Math.sin(angle)
+    );
+    const ball = new Ball(mouse_pos, speed);
     balls.push(ball);
+
+    mouse_pos  = null;
+    drag_pos   = null;
+    barb_l_pos = null;
+    barb_r_pos = null;
   })
 }
 
