@@ -66,6 +66,10 @@ class V2 {
       this.x * Math.sin(angle) + this.y * Math.cos(angle)
     )
   }
+
+  static zero() {
+    return new V2(0, 0);
+  }
 }
 
 class Ball {
@@ -119,6 +123,8 @@ let barb_r_pos = null;
 const D = 0.5; // Resistance constant
 const M = 1;   // Ball mass
 let has_air_resistance = false;
+let has_wind = false;
+const v_wind = new V2(-60, 0);
 
 function frame(cur_time) {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -133,9 +139,10 @@ function frame(cur_time) {
   }
 
   for (const ball of balls) {
-    if (has_air_resistance) {
-      a = ball.v.scale(-D/M).add(G_A);
-    }
+    let relative_v = V2.zero();
+    if (has_wind) relative_v = relative_v.add(v_wind);
+    if (has_air_resistance) relative_v = relative_v.sub(ball.v);
+    a = relative_v.scale(D/M).add(G_A);
 
     let new_v   = ball.v.add(a.scale(timestep));
     let new_pos = ball.pos.add(ball.v.add(new_v).scale(timestep/2));
@@ -224,6 +231,10 @@ function main() {
 
 function enableAirResistance() {
   has_air_resistance = !has_air_resistance;
+}
+
+function enableWind() {
+  has_wind = !has_wind;
 }
 
 main();
