@@ -1,8 +1,27 @@
-const WIDTH = 1000;
-const HEIGHT = 600;
+const BACKGROUND_COLOR = "black";
+const BALL_COLOR = "red";
+const RADIUS = 20;
+const SPAWN_BALL_COLOR = "yellow";
+const G = 100; // Gravity
+const FPS = 60;
+const timestep = 1 / 60;
+const c_r = 0.5; // Coefficient of restitution
+const c_f = 0.5; // Coefficient of friction
 
-canvas.style.background = "black";
-canvas.width = WIDTH;
+const { width, height } = canvas.getBoundingClientRect();
+let WIDTH = width;
+let HEIGHT = height;
+
+window.addEventListener("resize", () => {
+  const { width, height } = canvas.getBoundingClientRect();
+  WIDTH = width;
+  HEIGHT = height;
+  canvas.width = width;
+  canvas.height = height;
+})
+
+canvas.style.background = BACKGROUND_COLOR;
+canvas.width = width;
 canvas.height = HEIGHT;
 const ctx = canvas.getContext("2d");
 if (!ctx) throw new Error("Could not retrieve context");
@@ -84,20 +103,9 @@ function draw_arrow(ctx, tip_pos, barb_l_pos, barb_r_pos, color) {
   ctx.fill();
 }
 
-const RADIUS = 20;
-const COLOR  = "red";
-const G = 100; // Gravity
-const FPS = 60;
-const timestep = 1 / 60;
-
 let this_frame = null;
 let prev_time = 0;
 let a = new V2(0, G); // Gravity only affects y axis
-let v = new V2(40, 0);
-let pos = new V2(0, 100);
-let c_r = 0.5; // Coefficient of restitution
-let c_f = 0.5; // Coefficient of friction
-// const balls = [new Ball(new V2(0, 100), new V2(40, 0))];
 const balls = [];
 
 let is_selecting_position = false;
@@ -110,11 +118,11 @@ function frame(cur_time) {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
   if (is_selecting_position) {
-    draw_circle(ctx, mouse_pos, 10, "yellow");
+    draw_circle(ctx, mouse_pos, 10, SPAWN_BALL_COLOR);
 
     if (drag_pos) {
-      draw_line(ctx, mouse_pos, drag_pos, "yellow");
-      draw_arrow(ctx, drag_pos, barb_l_pos, barb_r_pos, "yellow");
+      draw_line(ctx, mouse_pos, drag_pos, SPAWN_BALL_COLOR);
+      draw_arrow(ctx, drag_pos, barb_l_pos, barb_r_pos, SPAWN_BALL_COLOR);
     }
   }
 
@@ -142,7 +150,7 @@ function frame(cur_time) {
 
     ball.v = new_v;
     ball.pos = new_pos;
-    draw_circle(ctx, new_pos, RADIUS, COLOR);
+    draw_circle(ctx, new_pos, RADIUS, BALL_COLOR);
   }
 
   this_frame = requestAnimationFrame(frame);
@@ -176,7 +184,6 @@ function main() {
     const drag_vec = drag_pos.sub(mouse_pos);
     const x_axis = new V2(WIDTH, 0);
     const sign_x = Math.sign(drag_vec.dot(x_axis));
-
     const y_axis = new V2(0, HEIGHT);
     const sign_y = Math.sign(drag_vec.dot(y_axis));
 
@@ -191,7 +198,7 @@ function main() {
     const Y_SPEED = 200;
 
     const speed = new V2(
-      sign_x * X_SPEED * Math.cos(angle),
+      sign_x * X_SPEED * cos,
       sign_y * Y_SPEED * Math.sin(angle)
     );
     const ball = new Ball(mouse_pos, speed);
