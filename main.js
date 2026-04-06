@@ -105,7 +105,9 @@ function draw_arrow(ctx, tip_pos, barb_l_pos, barb_r_pos, color) {
 
 let this_frame = null;
 let prev_time = 0;
-let a = new V2(0, G); // Gravity only affects y axis
+let G_A = new V2(0, G); // Gravity only affects y axis
+let a = G_A;
+
 const balls = [];
 
 let is_selecting_position = false;
@@ -113,6 +115,10 @@ let mouse_pos = null;
 let drag_pos = null;
 let barb_l_pos = null;
 let barb_r_pos = null;
+
+const D = 0.5; // Resistance constant
+const M = 1;   // Ball mass
+let has_air_resistance = false;
 
 function frame(cur_time) {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -127,6 +133,10 @@ function frame(cur_time) {
   }
 
   for (const ball of balls) {
+    if (has_air_resistance) {
+      a = ball.v.scale(-D/M).add(G_A);
+    }
+
     let new_v   = ball.v.add(a.scale(timestep));
     let new_pos = ball.pos.add(ball.v.add(new_v).scale(timestep/2));
 
@@ -210,6 +220,10 @@ function main() {
     barb_l_pos = null;
     barb_r_pos = null;
   })
+}
+
+function enableAirResistance() {
+  has_air_resistance = !has_air_resistance;
 }
 
 main();
