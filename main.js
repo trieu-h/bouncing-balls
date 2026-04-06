@@ -194,8 +194,9 @@ function main() {
     const cos = x_vec_from_mouse.dot(drag_vec) / (x_vec_from_mouse.length() * drag_vec.length());
     angle = Math.acos(cos);
 
-    const X_SPEED = 200;
-    const Y_SPEED = 200;
+    const drag_vec_length = drag_vec.length();
+    const X_SPEED = drag_vec_length;
+    const Y_SPEED = drag_vec_length;
 
     const speed = new V2(
       sign_x * X_SPEED * cos,
