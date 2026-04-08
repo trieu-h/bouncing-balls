@@ -1,17 +1,26 @@
+// Main canvas constants
 const BACKGROUND_COLOR = "black";
 const BALL_COLOR = "red";
 const RADIUS = 20;
 const SPAWN_BALL_COLOR = "yellow";
+
+// Wind canvas constants
 const WIND_CANVAS_WIDTH = 200;
 const WIND_CANVAS_HEIGHT = 200;
 const WIND_CANVAS_PADDING = 20;
 const WIND_CIRCLE_RADIUS = 200/2 - WIND_CANVAS_PADDING;
 const POINT_RADIUS = 5;
+const WIND_CIRCLE_COLOR = "yellow";
+const WIND_DIR_COLOR = "red";
+
+// Physic constants
 const G = 100; // Gravity
+const D = 0.5; // Resistance constant
+const M = 1;   // Ball mass
+const C_R = 0.5; // Coefficient of restitution
+const C_F = 0.5; // Coefficient of friction
 const FPS = 60;
-const timestep = 1 / 60;
-const c_r = 0.5; // Coefficient of restitution
-const c_f = 0.5; // Coefficient of friction
+const timestep = 1 / FPS;
 
 const { width, height } = canvas.getBoundingClientRect();
 let WIDTH = width;
@@ -83,18 +92,6 @@ class V2 {
     return Math.sqrt((that.x - this.x) * (that.x - this.x) + (that.y - this.y) * (that.y - this.y));
   }
 
-  // angle(that) {
-  //   const cos = this.dot(that) / (this.length() * that.length());
-  //   return Math.acos(cos);
-  // }
-
-  angle(that) {
-    return Math.atan2(
-      that.x * this.y - that.y * this.x,
-      that.x * this.x + that.x * this.y
-    );
-  }
-
   static zero() {
     return new V2(0, 0);
   }
@@ -146,9 +143,7 @@ function draw_arrow(ctx, origin_pos, tip_pos, degree, length, color) {
 }
 
 let this_frame = null;
-let prev_time = 0;
 let G_A = new V2(0, G); // Gravity only affects y axis
-let a = G_A;
 
 const balls = [];
 
@@ -156,13 +151,11 @@ let is_selecting_position = false;
 let mouse_pos = null;
 let drag_pos = null;
 
-const D = 0.5; // Resistance constant
-const M = 1;   // Ball mass
 let has_air_resistance = false;
 let has_wind = false;
-const v_wind = new V2(30, 30);
+const V_WIND = new V2(30, 30);
 
-function frame(cur_time) {
+function frame() {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
   if (is_selecting_position) {
@@ -176,9 +169,9 @@ function frame(cur_time) {
 
   for (const ball of balls) {
     let relative_v = V2.zero();
-    if (has_wind) relative_v = relative_v.add(v_wind.mul(wind_dir));
+    if (has_wind) relative_v = relative_v.add(V_WIND.mul(wind_dir));
     if (has_air_resistance) relative_v = relative_v.sub(ball.v);
-    a = relative_v.scale(D/M).add(G_A);
+    const a = relative_v.scale(D/M).add(G_A);
 
     let new_v   = ball.v.add(a.scale(timestep));
     let new_pos = ball.pos.add(ball.v.add(new_v).scale(timestep/2));
@@ -196,8 +189,8 @@ function frame(cur_time) {
       new_pos = ball.pos.add(ball.v.add(new_v).scale(this_timestep/2));
       const v_n = ground_unit_vector.scale(new_v.dot(ground_unit_vector));
       const v_t = new_v.sub(v_n);
-      const v_n_new = ground_unit_vector.scale(-c_r * (v_n.dot(ground_unit_vector)));
-      const v_t_new = v_t.scale(1 - c_f);
+      const v_n_new = ground_unit_vector.scale(-C_R * (v_n.dot(ground_unit_vector)));
+      const v_t_new = v_t.scale(1 - C_F);
       new_v = v_n_new.add(v_t_new);
     }
 
@@ -215,10 +208,10 @@ let wind_dir = point.sub(wind_canvas_center).norm();
 
 function wind_frame() {
   wind_ctx.clearRect(0, 0, WIND_CANVAS_WIDTH, WIND_CANVAS_HEIGHT);
-  draw_circle_outline(wind_ctx, wind_canvas_center, WIND_CIRCLE_RADIUS, "yellow");
-  draw_line(wind_ctx, wind_canvas_center, point, "red");
-  draw_circle(wind_ctx, point, POINT_RADIUS, "red");
-  draw_arrow(wind_ctx, wind_canvas_center, point, 20, 20, "red");
+  draw_circle_outline(wind_ctx, wind_canvas_center, WIND_CIRCLE_RADIUS, WIND_CIRCLE_COLOR);
+  draw_line(wind_ctx, wind_canvas_center, point, WIND_DIR_COLOR);
+  draw_circle(wind_ctx, point, POINT_RADIUS, WIND_DIR_COLOR);
+  draw_arrow(wind_ctx, wind_canvas_center, point, 20, 20, WIND_DIR_COLOR);
   requestAnimationFrame(wind_frame);
 }
 
