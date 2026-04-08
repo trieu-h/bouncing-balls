@@ -1,8 +1,8 @@
 // Main canvas constants
-const BACKGROUND_COLOR = "black";
-const BALL_COLOR = "red";
+const BACKGROUND_COLOR = "#96BECD";
+const BALL_COLOR = "#C05746";
+const SPAWN_BALL_COLOR = "#FFF4A3";
 const RADIUS = 20;
-const SPAWN_BALL_COLOR = "yellow";
 
 // Wind canvas constants
 const WIND_CANVAS_WIDTH = 200;
@@ -10,6 +10,7 @@ const WIND_CANVAS_HEIGHT = 200;
 const WIND_CANVAS_PADDING = 20;
 const WIND_CIRCLE_RADIUS = 200/2 - WIND_CANVAS_PADDING;
 const POINT_RADIUS = 5;
+const WIND_CANVAS_BACKGROUND = "#252a7f";
 const WIND_CIRCLE_COLOR = "yellow";
 const WIND_DIR_COLOR = "red";
 
@@ -40,9 +41,9 @@ canvas.height = HEIGHT;
 const ctx = canvas.getContext("2d");
 if (!ctx) throw new Error("Could not retrieve context");
 
-wind_canvas.style.background = "purple";
-wind_canvas.width  = 200;
-wind_canvas.height = 200;
+wind_canvas.style.background = WIND_CANVAS_BACKGROUND;
+wind_canvas.width  = WIND_CANVAS_WIDTH;
+wind_canvas.height = WIND_CANVAS_HEIGHT;
 
 const wind_ctx = wind_canvas.getContext("2d");
 if (!wind_ctx) throw new Error("Could not retrieve context");
@@ -226,8 +227,10 @@ function main() {
   requestAnimationFrame(wind_frame);
 
   canvas.addEventListener("mousedown", (e) => {
-    is_selecting_position = true;
-    mouse_pos = new V2(e.offsetX, e.offsetY);
+    if (event.button === 0) { // Mouse left
+      is_selecting_position = true;
+      mouse_pos = new V2(e.offsetX, e.offsetY);
+    }
   })
 
   canvas.addEventListener("mousemove", (e) => {
@@ -293,6 +296,11 @@ function enableAirResistance() {
 
 function enableWind() {
   has_wind = !has_wind;
+  if (has_wind) {
+    wind_canvas.style.display = "block";
+  } else {
+    wind_canvas.style.display = "none";
+  }
 }
 
 main();
