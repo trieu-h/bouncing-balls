@@ -177,10 +177,26 @@ function frame() {
     let new_v   = ball.v.add(a.scale(timestep));
     let new_pos = ball.pos.add(ball.v.add(new_v).scale(timestep/2));
 
+    // TODO: I'm too lazy to refactor this right now lol
     const ground_unit_vector = new V2(0, 0).sub(new V2(0, HEIGHT)).norm();
     const random_point_on_ground = new V2(WIDTH/2, HEIGHT);
     const d = ball.pos.add(new V2(0, RADIUS)).sub(random_point_on_ground).dot(ground_unit_vector);
     const new_d = new_pos.add(new V2(0, RADIUS)).sub(random_point_on_ground).dot(ground_unit_vector);
+
+    const ceiling_unit_vector = new V2(0, HEIGHT).sub(new V2(0, 0)).norm();
+    const random_point_on_ceiling = new V2(WIDTH/2, 0);
+    const d_ceil = ball.pos.sub(new V2(0, RADIUS)).sub(random_point_on_ceiling).dot(ceiling_unit_vector);
+    const new_d_ceil = new_pos.sub(new V2(0, RADIUS)).sub(random_point_on_ceiling).dot(ceiling_unit_vector);
+
+    const left_wall_unit_vector = new V2(WIDTH, 0).sub(new V2(0, 0)).norm();
+    const random_point_on_left_wall = new V2(0, HEIGHT/2);
+    const d_left = ball.pos.sub(new V2(0, RADIUS)).sub(random_point_on_left_wall).dot(left_wall_unit_vector);
+    const new_d_left = new_pos.sub(new V2(0, RADIUS)).sub(random_point_on_left_wall).dot(left_wall_unit_vector);
+
+    const right_wall_unit_vector = new V2(0, 0).sub(new V2(WIDTH, 0)).norm();
+    const random_point_on_right_wall = new V2(WIDTH, HEIGHT/2);
+    const d_right = ball.pos.add(new V2(0, RADIUS)).sub(random_point_on_right_wall).dot(right_wall_unit_vector);
+    const new_d_right = new_pos.add(new V2(0, RADIUS)).sub(random_point_on_right_wall).dot(right_wall_unit_vector);
 
     // Collision occured, perform sub-stepping
     if (new_d < 0) {
@@ -191,6 +207,42 @@ function frame() {
       const v_n = ground_unit_vector.scale(new_v.dot(ground_unit_vector));
       const v_t = new_v.sub(v_n);
       const v_n_new = ground_unit_vector.scale(-C_R * (v_n.dot(ground_unit_vector)));
+      const v_t_new = v_t.scale(1 - C_F);
+      new_v = v_n_new.add(v_t_new);
+    }
+
+    if (new_d_ceil < 0) {
+      const f = d_ceil / (d_ceil - new_d_ceil);
+      const this_timestep = f * timestep;
+      new_v   = ball.v.add(a.scale(this_timestep));
+      new_pos = ball.pos.add(ball.v.add(new_v).scale(this_timestep/2));
+      const v_n = ceiling_unit_vector.scale(new_v.dot(ceiling_unit_vector));
+      const v_t = new_v.sub(v_n);
+      const v_n_new = ceiling_unit_vector.scale(-C_R * (v_n.dot(ceiling_unit_vector)));
+      const v_t_new = v_t.scale(1 - C_F);
+      new_v = v_n_new.add(v_t_new);
+    }
+
+    if (new_d_left < 0) {
+      const f = d_left / (d_left - new_d_left);
+      const this_timestep = f * timestep;
+      new_v   = ball.v.add(a.scale(this_timestep));
+      new_pos = ball.pos.add(ball.v.add(new_v).scale(this_timestep/2));
+      const v_n = left_wall_unit_vector.scale(new_v.dot(left_wall_unit_vector));
+      const v_t = new_v.sub(v_n);
+      const v_n_new = left_wall_unit_vector.scale(-C_R * (v_n.dot(left_wall_unit_vector)));
+      const v_t_new = v_t.scale(1 - C_F);
+      new_v = v_n_new.add(v_t_new);
+    }
+
+    if (new_d_right < 0) {
+      const f = d_right / (d_right - new_d_right);
+      const this_timestep = f * timestep;
+      new_v   = ball.v.add(a.scale(this_timestep));
+      new_pos = ball.pos.add(ball.v.add(new_v).scale(this_timestep/2));
+      const v_n = right_wall_unit_vector.scale(new_v.dot(right_wall_unit_vector));
+      const v_t = new_v.sub(v_n);
+      const v_n_new = right_wall_unit_vector.scale(-C_R * (v_n.dot(right_wall_unit_vector)));
       const v_t_new = v_t.scale(1 - C_F);
       new_v = v_n_new.add(v_t_new);
     }
