@@ -2,6 +2,11 @@ const BACKGROUND_COLOR = "black";
 const BALL_COLOR = "red";
 const RADIUS = 20;
 const SPAWN_BALL_COLOR = "yellow";
+const WIND_CANVAS_WIDTH = 200;
+const WIND_CANVAS_HEIGHT = 200;
+const WIND_CANVAS_PADDING = 20;
+const WIND_CIRCLE_RADIUS = 200/2 - WIND_CANVAS_PADDING;
+const POINT_RADIUS = 5;
 const G = 100; // Gravity
 const FPS = 60;
 const timestep = 1 / 60;
@@ -21,10 +26,17 @@ window.addEventListener("resize", () => {
 })
 
 canvas.style.background = BACKGROUND_COLOR;
-canvas.width = width;
+canvas.width = WIDTH;
 canvas.height = HEIGHT;
 const ctx = canvas.getContext("2d");
 if (!ctx) throw new Error("Could not retrieve context");
+
+wind_canvas.style.background = "purple";
+wind_canvas.width  = 200;
+wind_canvas.height = 200;
+
+const wind_ctx = wind_canvas.getContext("2d");
+if (!wind_ctx) throw new Error("Could not retrieve context");
 
 class V2 {
   constructor(x, y) {
@@ -67,6 +79,22 @@ class V2 {
     )
   }
 
+  dist(that) {
+    return Math.sqrt((that.x - this.x) * (that.x - this.x) + (that.y - this.y) * (that.y - this.y));
+  }
+
+  // angle(that) {
+  //   const cos = this.dot(that) / (this.length() * that.length());
+  //   return Math.acos(cos);
+  // }
+
+  angle(that) {
+    return Math.atan2(
+      that.x * this.y - that.y * this.x,
+      that.x * this.x + that.x * this.y
+    );
+  }
+
   static zero() {
     return new V2(0, 0);
   }
@@ -88,6 +116,13 @@ function draw_line(ctx, start_pos, end_pos, color, lineWidth = 1) {
   ctx.stroke();
 }
 
+function draw_circle_outline(ctx, pos, radius, color) {
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, radius, 0, 2 * Math.PI, false);
+  ctx.strokeStyle = color;
+  ctx.stroke();
+}
+
 function draw_circle(ctx, pos, radius, color) {
   ctx.beginPath();
   ctx.arc(pos.x, pos.y, radius, 0, 2 * Math.PI, false);
@@ -97,7 +132,10 @@ function draw_circle(ctx, pos, radius, color) {
   ctx.stroke();
 }
 
-function draw_arrow(ctx, tip_pos, barb_l_pos, barb_r_pos, color) {
+function draw_arrow(ctx, origin_pos, tip_pos, degree, length, color) {
+  const barb_l_pos = origin_pos.sub(tip_pos).norm().rotate(rad( degree)).scale(length).add(tip_pos);
+  const barb_r_pos = origin_pos.sub(tip_pos).norm().rotate(rad(-degree)).scale(length).add(tip_pos);
+
   ctx.beginPath();
   ctx.moveTo(tip_pos.x, tip_pos.y);
   ctx.lineTo(barb_l_pos.x, barb_l_pos.y);
@@ -117,14 +155,12 @@ const balls = [];
 let is_selecting_position = false;
 let mouse_pos = null;
 let drag_pos = null;
-let barb_l_pos = null;
-let barb_r_pos = null;
 
 const D = 0.5; // Resistance constant
 const M = 1;   // Ball mass
 let has_air_resistance = false;
 let has_wind = false;
-const v_wind = new V2(-60, 0);
+const v_wind = new V2(30, 30);
 
 function frame(cur_time) {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -134,13 +170,13 @@ function frame(cur_time) {
 
     if (drag_pos) {
       draw_line(ctx, mouse_pos, drag_pos, SPAWN_BALL_COLOR);
-      draw_arrow(ctx, drag_pos, barb_l_pos, barb_r_pos, SPAWN_BALL_COLOR);
+      draw_arrow(ctx, mouse_pos, drag_pos, 30, 20, SPAWN_BALL_COLOR);
     }
   }
 
   for (const ball of balls) {
     let relative_v = V2.zero();
-    if (has_wind) relative_v = relative_v.add(v_wind);
+    if (has_wind) relative_v = relative_v.add(v_wind.mul(wind_dir));
     if (has_air_resistance) relative_v = relative_v.sub(ball.v);
     a = relative_v.scale(D/M).add(G_A);
 
@@ -173,12 +209,28 @@ function frame(cur_time) {
   this_frame = requestAnimationFrame(frame);
 }
 
+let wind_canvas_center = new V2(WIND_CANVAS_WIDTH/2, WIND_CANVAS_HEIGHT/2);
+let point = new V2(wind_canvas_center.x + WIND_CIRCLE_RADIUS, WIND_CANVAS_HEIGHT / 2);
+let wind_dir = point.sub(wind_canvas_center).norm();
+
+function wind_frame() {
+  wind_ctx.clearRect(0, 0, WIND_CANVAS_WIDTH, WIND_CANVAS_HEIGHT);
+  draw_circle_outline(wind_ctx, wind_canvas_center, WIND_CIRCLE_RADIUS, "yellow");
+  draw_line(wind_ctx, wind_canvas_center, point, "red");
+  draw_circle(wind_ctx, point, POINT_RADIUS, "red");
+  draw_arrow(wind_ctx, wind_canvas_center, point, 20, 20, "red");
+  requestAnimationFrame(wind_frame);
+}
+
 function rad(degree) {
   return degree * (Math.PI / 180);
 }
 
+let is_dragging_point = false;
+
 function main() {
   this_frame = requestAnimationFrame(frame);
+  requestAnimationFrame(wind_frame);
 
   canvas.addEventListener("mousedown", (e) => {
     is_selecting_position = true;
@@ -188,10 +240,6 @@ function main() {
   canvas.addEventListener("mousemove", (e) => {
     if (is_selecting_position) {
       drag_pos = new V2(e.offsetX, e.offsetY);
-      const DEGREE = 30;
-      const LENGTH = 20;
-      barb_l_pos = mouse_pos.sub(drag_pos).norm().rotate(rad( DEGREE)).scale(LENGTH).add(drag_pos);
-      barb_r_pos = mouse_pos.sub(drag_pos).norm().rotate(rad(-DEGREE)).scale(LENGTH).add(drag_pos);
     }
   })
 
@@ -204,28 +252,45 @@ function main() {
     const y_axis = new V2(0, HEIGHT);
     const sign_y = Math.sign(drag_vec.dot(y_axis));
 
-    let angle;
-
     let x_vec_from_mouse = sign_x < 0 ? new V2(0 - mouse_pos.x, 0) : new V2(WIDTH - mouse_pos.x, 0);
 
     const cos = x_vec_from_mouse.dot(drag_vec) / (x_vec_from_mouse.length() * drag_vec.length());
-    angle = Math.acos(cos);
-
+    const angle = Math.acos(cos);
     const drag_vec_length = drag_vec.length();
-    const X_SPEED = drag_vec_length;
-    const Y_SPEED = drag_vec_length;
-
     const speed = new V2(
-      sign_x * X_SPEED * cos,
-      sign_y * Y_SPEED * Math.sin(angle)
+      sign_x * drag_vec_length * cos,
+      sign_y * drag_vec_length * Math.sin(angle)
     );
     const ball = new Ball(mouse_pos, speed);
     balls.push(ball);
 
     mouse_pos  = null;
     drag_pos   = null;
-    barb_l_pos = null;
-    barb_r_pos = null;
+  })
+
+  wind_canvas.addEventListener("mousedown", (e) => {
+    const mouse = new V2(e.offsetX, e.offsetY);
+    if (mouse.dist(point) <= POINT_RADIUS) {
+      is_dragging_point = true;
+    }
+  })
+
+  wind_canvas.addEventListener("mousemove", (e) => {
+    const mouse = new V2(e.offsetX, e.offsetY);
+
+    if (is_dragging_point) {
+      point = mouse
+        .sub(wind_canvas_center)
+        .norm()
+        .scale(WIND_CIRCLE_RADIUS)
+        .add(wind_canvas_center);
+
+      wind_dir = point.sub(wind_canvas_center).norm();
+    }
+  })
+
+  wind_canvas.addEventListener("mouseup", () => {
+    is_dragging_point = false;
   })
 }
 
